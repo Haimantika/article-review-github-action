@@ -262,7 +262,7 @@ jobs:
           const checkGrammar = async (text) => {
             try {
               const response = await axios.post(API_ENDPOINT, {
-                model: 'claude-3-sonnet-20240229',
+                model: 'claude-3.5-sonnet',
                 prompt: `Please review the following text for grammatical errors, typos, incorrect sentence structures, passive voice, and unnecessary jargon. For each issue, identify the specific problem, explain why it's an issue, and suggest a correction. Format your response as a JSON array with objects containing: "issue_type", "text_with_issue", "explanation", and "suggestion".
 
           Text to review:

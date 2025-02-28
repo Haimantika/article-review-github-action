@@ -62,6 +62,8 @@ const getAllMarkdownFiles = (dir, fileList = [], excludeDirs = ['node_modules', 
   // Function to check grammar using DigitalOcean's GenAI API
   const checkGrammar = async (text) => {
     try {
+      console.log("Sending request to DigitalOcean GenAI API...");
+      
       const response = await axios.post(API_ENDPOINT, {
         model: 'claude-3-sonnet-20240229',
         prompt: `Please review the following text for grammatical errors, typos, incorrect sentence structures, passive voice, and unnecessary jargon. For each issue, identify the specific problem, explain why it's an issue, and suggest a correction. Format your response as a JSON array with objects containing: "issue_type", "text_with_issue", "explanation", and "suggestion".
@@ -79,6 +81,8 @@ const getAllMarkdownFiles = (dir, fileList = [], excludeDirs = ['node_modules', 
         }
       });
       
+      console.log("Received response from API");
+      
       // Parse the AI response to get the JSON data
       const aiResponse = response.data.choices[0].message.content;
       try {
@@ -94,7 +98,7 @@ const getAllMarkdownFiles = (dir, fileList = [], excludeDirs = ['node_modules', 
       console.error('❌ Error checking grammar:', error.message);
       if (error.response) {
         console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
+        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
       }
       return [];
     }
