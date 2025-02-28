@@ -1,0 +1,35 @@
+{
+    "default": true,
+    "MD013": false,
+    "MD033": false,
+    "MD041": false,
+    "MD001": true,
+    "MD003": {
+      "style": "atx"
+    },
+    "MD007": {
+      "indent": 2
+    },
+    "MD009": true,
+    "MD010": true,
+    "MD011": true,
+    "MD018": true,
+    "MD019": true,
+    "MD022": true,
+    "MD023": true,
+    "MD025": true,
+    "MD031": true,
+    "MD032": true,
+    "MD034": true,
+    "MD035": {
+      "style": "---"
+    },
+    "MD036": false,
+    "MD037": true,
+    "MD038": true,
+    "MD039": true,
+    "MD040": true,
+    "MD046": {
+      "style": "fenced"
+    }
+  }

@@ -1,0 +1,372 @@
+name: Markdown Validator
+
+on:
+  push:
+    paths:
+      - '**.md'
+  pull_request:
+    paths:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  validate-markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          npm install -g markdownlint-cli
+          npm install -g remark-cli remark-lint
+          npm install -g markdown-table-formatter
+          npm install -g yaml-front-matter
+          
+      - name: Create validation script
+        run: |
+          cat > validate-markdown.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const yamlFront = require('yaml-front-matter');
+          
+          // Configuration
+          const requiredFrontMatterFields = [
+            'title',
+            'description',
+            'state',
+            'language',
+            'authors',
+            'primary_tag',
+            'tags'
+          ];
+          
+          // Get all markdown files from the repository
+          const getAllMarkdownFiles = (dir, fileList = []) => {
+            const files = fs.readdirSync(dir);
+            
+            files.forEach(file => {
+              const filePath = path.join(dir, file);
+              if (fs.statSync(filePath).isDirectory()) {
+                getAllMarkdownFiles(filePath, fileList);
+              } else if (file.endsWith('.md')) {
+                fileList.push(filePath);
+              }
+            });
+            
+            return fileList;
+          };
+          
+          // Validate front matter
+          const validateFrontMatter = (filePath) => {
+            const content = fs.readFileSync(filePath, 'utf8');
+            let frontMatter;
+            
+            try {
+              frontMatter = yamlFront.loadFront(content);
+            } catch (error) {
+              console.error(`❌ ${filePath}: Invalid YAML front matter`);
+              return false;
+            }
+            
+            // Check required fields
+            let valid = true;
+            for (const field of requiredFrontMatterFields) {
+              if (!frontMatter[field]) {
+                console.error(`❌ ${filePath}: Missing required front matter field '${field}'`);
+                valid = false;
+              }
+            }
+            
+            return valid;
+          };
+          
+          // Validate headers structure (should follow proper hierarchy)
+          const validateHeaderStructure = (filePath) => {
+            const content = fs.readFileSync(filePath, 'utf8');
+            const lines = content.split('\n');
+            const headerLevels = [];
+            const yamlSection = content.startsWith('---');
+            let inYamlSection = yamlSection;
+            let valid = true;
+            
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              
+              // Skip YAML front matter
+              if (line === '---') {
+                inYamlSection = !inYamlSection;
+                continue;
+              }
+              
+              if (inYamlSection) {
+                continue;
+              }
+              
+              // Check if line is a header
+              if (line.startsWith('#')) {
+                const level = line.match(/^#+/)[0].length;
+                
+                // First header should be level 1 or 2
+                if (headerLevels.length === 0 && level > 2) {
+                  console.error(`❌ ${filePath}:${i+1}: First header should be level 1 or 2, found level ${level}`);
+                  valid = false;
+                }
+                
+                // Headers should not skip levels
+                if (headerLevels.length > 0 && level > headerLevels[headerLevels.length - 1] + 1) {
+                  console.error(`❌ ${filePath}:${i+1}: Header level skipped from ${headerLevels[headerLevels.length - 1]} to ${level}`);
+                  valid = false;
+                }
+                
+                headerLevels.push(level);
+              }
+            }
+            
+            return valid;
+          };
+          
+          // Validate code blocks (properly formatted and closed)
+          const validateCodeBlocks = (filePath) => {
+            const content = fs.readFileSync(filePath, 'utf8');
+            const lines = content.split('\n');
+            let inCodeBlock = false;
+            let codeBlockStart = 0;
+            let valid = true;
+            
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              
+              if (line.trim().startsWith('```')) {
+                if (inCodeBlock) {
+                  inCodeBlock = false;
+                } else {
+                  inCodeBlock = true;
+                  codeBlockStart = i;
+                  
+                  // Check if language is specified
+                  const codeLang = line.trim().replace('```', '');
+                  if (codeLang.trim() === '') {
+                    console.warn(`⚠️ ${filePath}:${i+1}: Code block without language specification`);
+                  }
+                }
+              }
+            }
+            
+            if (inCodeBlock) {
+              console.error(`❌ ${filePath}:${codeBlockStart+1}: Unclosed code block`);
+              valid = false;
+            }
+            
+            return valid;
+          };
+          
+          // Validate links (proper format and no broken relative links)
+          const validateLinks = (filePath) => {
+            const content = fs.readFileSync(filePath, 'utf8');
+            const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+            const htmlLinkRegex = /<a\s+(?:[^>]*?\s+)?href="([^"]*)"[^>]*>/g;
+            let match;
+            let valid = true;
+            
+            // Check Markdown style links
+            while ((match = markdownLinkRegex.exec(content)) !== null) {
+              const [fullMatch, text, url] = match;
+              
+              // Check for empty link text
+              if (!text.trim()) {
+                console.error(`❌ ${filePath}: Empty link text in "${fullMatch}"`);
+                valid = false;
+              }
+              
+              // Check for local file links that don't exist
+              if (url.startsWith('./') || url.startsWith('../') || (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/#'))) {
+                try {
+                  const localPath = url.startsWith('/') 
+                    ? path.join(process.cwd(), url) 
+                    : path.join(path.dirname(filePath), url);
+                  
+                  if (!fs.existsSync(localPath)) {
+                    console.error(`❌ ${filePath}: Broken local link "${url}"`);
+                    valid = false;
+                  }
+                } catch (error) {
+                  console.error(`❌ ${filePath}: Error checking local link "${url}": ${error.message}`);
+                  valid = false;
+                }
+              }
+            }
+            
+            // Check HTML style links
+            while ((match = htmlLinkRegex.exec(content)) !== null) {
+              const url = match[1];
+              
+              // Check for local file links that don't exist
+              if (url.startsWith('./') || url.startsWith('../') || (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/#'))) {
+                try {
+                  const localPath = url.startsWith('/') 
+                    ? path.join(process.cwd(), url) 
+                    : path.join(path.dirname(filePath), url);
+                  
+                  if (!fs.existsSync(localPath)) {
+                    console.error(`❌ ${filePath}: Broken local link "${url}"`);
+                    valid = false;
+                  }
+                } catch (error) {
+                  console.error(`❌ ${filePath}: Error checking local link "${url}": ${error.message}`);
+                  valid = false;
+                }
+              }
+            }
+            
+            return valid;
+          };
+          
+          // Validate tables (properly formatted)
+          const validateTables = (filePath) => {
+            const content = fs.readFileSync(filePath, 'utf8');
+            const lines = content.split('\n');
+            let inTable = false;
+            let tableStartLine = 0;
+            let headerSeparatorFound = false;
+            let columnCount = 0;
+            let valid = true;
+            
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i].trim();
+              
+              if (line.startsWith('|') && line.endsWith('|')) {
+                if (!inTable) {
+                  inTable = true;
+                  tableStartLine = i;
+                  columnCount = (line.match(/\|/g) || []).length - 1;
+                } else {
+                  // Check if this is the header separator row
+                  if (line.replace(/\|/g, '').trim().replace(/\s/g, '').replace(/-/g, '').replace(/:/g, '') === '') {
+                    headerSeparatorFound = true;
+                    
+                    // Validate separator format
+                    const separators = line.split('|').filter(Boolean);
+                    for (const separator of separators) {
+                      if (!separator.trim().match(/^:?-+:?$/)) {
+                        console.error(`❌ ${filePath}:${i+1}: Invalid table header separator "${separator}"`);
+                        valid = false;
+                      }
+                    }
+                  } else {
+                    // Check if all rows have the same number of columns
+                    const currentColumnCount = (line.match(/\|/g) || []).length - 1;
+                    if (currentColumnCount !== columnCount) {
+                      console.error(`❌ ${filePath}:${i+1}: Table row has ${currentColumnCount} columns, expected ${columnCount}`);
+                      valid = false;
+                    }
+                  }
+                }
+              } else if (inTable) {
+                // End of table
+                inTable = false;
+                
+                // Check if table had header separator
+                if (!headerSeparatorFound) {
+                  console.error(`❌ ${filePath}:${tableStartLine+1}: Table missing header separator row`);
+                  valid = false;
+                }
+                
+                headerSeparatorFound = false;
+              }
+            }
+            
+            return valid;
+          };
+          
+          // Main validation function
+          const validateMarkdownFiles = () => {
+            const markdownFiles = getAllMarkdownFiles('.');
+            let allValid = true;
+            
+            console.log(`Found ${markdownFiles.length} markdown files to validate`);
+            
+            for (const file of markdownFiles) {
+              console.log(`\nValidating ${file}...`);
+              
+              const frontMatterValid = validateFrontMatter(file);
+              const headerStructureValid = validateHeaderStructure(file);
+              const codeBlocksValid = validateCodeBlocks(file);
+              const linksValid = validateLinks(file);
+              const tablesValid = validateTables(file);
+              
+              const fileValid = frontMatterValid && headerStructureValid && codeBlocksValid && linksValid && tablesValid;
+              
+              if (fileValid) {
+                console.log(`✅ ${file}: All checks passed`);
+              } else {
+                allValid = false;
+              }
+            }
+            
+            return allValid;
+          };
+          
+          // Run validation
+          const allValid = validateMarkdownFiles();
+          
+          if (!allValid) {
+            console.error('\n❌ Validation failed');
+            process.exit(1);
+          } else {
+            console.log('\n✅ All markdown files validated successfully');
+          }
+          EOF
+          
+          chmod +x validate-markdown.js
+          
+      - name: Create markdownlint config
+        run: |
+          cat > .markdownlint.json << 'EOF'
+          {
+            "default": true,
+            "MD013": false,
+            "MD033": false,
+            "MD041": false,
+            "MD001": true,
+            "MD003": {
+              "style": "atx"
+            },
+            "MD007": {
+              "indent": 2
+            },
+            "MD009": true,
+            "MD010": true,
+            "MD011": true,
+            "MD018": true,
+            "MD019": true,
+            "MD022": true,
+            "MD023": true,
+            "MD025": true,
+            "MD031": true,
+            "MD032": true,
+            "MD034": true,
+            "MD035": {
+              "style": "---"
+            },
+            "MD036": false,
+            "MD037": true,
+            "MD038": true,
+            "MD039": true,
+            "MD040": true,
+            "MD046": {
+              "style": "fenced"
+            }
+          }
+          EOF
+          
+      - name: Run markdownlint
+        run: markdownlint "**/*.md" --config .markdownlint.json
+          
+      - name: Run custom validator
+        run: node validate-markdown.js
