@@ -104,6 +104,13 @@ const getAllMarkdownFiles = (dir, fileList = [], excludeDirs = ['node_modules', 
   const processFile = async (filePath) => {
     try {
       console.log(`\nChecking grammar in ${filePath}...`);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`❌ Error: File does not exist: ${filePath}`);
+        return false;
+      }
+      
       const content = fs.readFileSync(filePath, 'utf8');
       const textToCheck = extractTextFromMarkdown(content);
       
@@ -112,6 +119,8 @@ const getAllMarkdownFiles = (dir, fileList = [], excludeDirs = ['node_modules', 
         console.log(`⚠️ Skipping ${filePath}: Not enough text content to check`);
         return true;
       }
+      
+      console.log(`Sending content to grammar check API...`);
       
       const issues = await checkGrammar(textToCheck);
       
@@ -142,12 +151,17 @@ const getAllMarkdownFiles = (dir, fileList = [], excludeDirs = ['node_modules', 
     if (process.argv.length > 2) {
       // Use files passed as arguments
       markdownFiles = process.argv.slice(2);
+      console.log(`Checking grammar in specific file(s): ${markdownFiles.join(', ')}`);
     } else {
       // Find all markdown files
       markdownFiles = getAllMarkdownFiles('.');
+      console.log(`Found ${markdownFiles.length} markdown files to check for grammar`);
     }
     
-    console.log(`Found ${markdownFiles.length} markdown files to check for grammar`);
+    if (markdownFiles.length === 0) {
+      console.log('No files to check.');
+      return true;
+    }
     
     let allValid = true;
     
