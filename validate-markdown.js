@@ -105,10 +105,20 @@ const validateWhitespace = (filePath) => {
 
 // Main validation function
 const validateMarkdownFiles = () => {
-  const markdownFiles = getAllMarkdownFiles('.');
-  let allValid = true;
+  // Get files to validate - either from command line args or find all
+  let markdownFiles = [];
+  
+  if (process.argv.length > 2) {
+    // Use files passed as arguments
+    markdownFiles = process.argv.slice(2);
+  } else {
+    // Find all markdown files
+    markdownFiles = getAllMarkdownFiles('.');
+  }
   
   console.log(`Found ${markdownFiles.length} markdown files to validate`);
+  
+  let allValid = true;
   
   for (const file of markdownFiles) {
     console.log(`\nValidating ${file}...`);
