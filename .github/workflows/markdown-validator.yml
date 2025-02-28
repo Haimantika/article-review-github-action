@@ -20,8 +20,7 @@ jobs:
           node-version: '18'
           
       - name: Install dependencies
-        run: |
-          npm install axios
+        run: npm install axios
           
       - name: Get changed files
         id: changed-files
@@ -32,7 +31,186 @@ jobs:
           files_ignore: |
             **/node_modules/**
           
-      - name: Create validation script
+      - name: Create grammar checker script
+        run: |
+          cat > grammar-checker.js << 'EOF'
+          #!/usr/bin/env node
+
+          const fs = require('fs');
+          const path = require('path');
+          const axios = require('axios');
+
+          // DigitalOcean AI Agent endpoint and key
+          const AGENT_BASE_URL = process.env.DO_AGENT_BASE_URL || 'https://do-agent.digitalocean.app';
+          const AGENT_ENDPOINT = `${AGENT_BASE_URL}/api/v1/chat/completions`;
+          const API_TOKEN = process.env.DO_API_TOKEN;
+
+          console.log("Using API endpoint:", AGENT_ENDPOINT);
+
+          if (!API_TOKEN) {
+            console.error('❌ Error: DigitalOcean API token not found. Please set the DO_API_TOKEN environment variable.');
+            process.exit(1);
+          }
+
+          // Extract plain text content from markdown
+          const extractTextFromMarkdown = (content) => {
+            // Remove YAML front matter
+            let text = content;
+            if (content.startsWith('---')) {
+              const endOfFrontMatter = content.indexOf('---', 3);
+              if (endOfFrontMatter !== -1) {
+                text = content.slice(endOfFrontMatter + 3);
+              }
+            }
+            
+            // Remove code blocks
+            text = text.replace(/```[\s\S]*?```/g, '');
+            
+            // Remove HTML tags
+            text = text.replace(/<[^>]*>/g, '');
+            
+            // Remove markdown links but keep the text
+            text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+            
+            // Remove images
+            text = text.replace(/!\[[^\]]*\]\([^)]+\)/g, '');
+            
+            return text;
+          };
+
+          // Function to check grammar using DigitalOcean's AI Agent
+          const checkGrammar = async (text) => {
+            try {
+              console.log("Sending request to DigitalOcean AI agent...");
+              
+              const payloadData = {
+                model: "claude-3-sonnet-20240229",
+                messages: [
+                  {
+                    role: "system",
+                    content: "You are a skilled editor focused on identifying grammatical errors, typos, incorrect sentence structures, passive voice, and unnecessary jargon."
+                  },
+                  {
+                    role: "user",
+                    content: `Please review the following text for grammatical errors, typos, incorrect sentence structures, passive voice, and unnecessary jargon. For each issue, identify the specific problem, explain why it's an issue, and suggest a correction. Format your response as a JSON array with objects containing: "issue_type", "text_with_issue", "explanation", and "suggestion". Only identify actual issues. If there are no grammatical problems, return an empty array.\n\nText to review:\n${text}`
+                  }
+                ],
+                temperature: 0.0,
+                max_tokens: 1024
+              };
+              
+              console.log("Request payload:", JSON.stringify(payloadData, null, 2));
+              
+              const response = await axios.post(AGENT_ENDPOINT, payloadData, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${API_TOKEN}`
+                }
+              });
+              
+              console.log("Received response from AI agent");
+              
+              // Parse the AI response to get the JSON data
+              const aiResponse = response.data.choices[0].message.content;
+              console.log("AI Response:", aiResponse);
+              
+              try {
+                // Extract JSON from the response (in case there's additional text)
+                const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
+                return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+              } catch (e) {
+                console.error('❌ Error parsing AI response:', e);
+                console.log('AI response:', aiResponse);
+                return [];
+              }
+            } catch (error) {
+              console.error('❌ Error checking grammar:', error.message);
+              if (error.response) {
+                console.error('Response status:', error.response.status);
+                console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+              }
+              return [];
+            }
+          };
+
+          // Process a single markdown file
+          const processFile = async (filePath) => {
+            try {
+              console.log(`\nChecking grammar in ${filePath}...`);
+              
+              // Check if file exists
+              if (!fs.existsSync(filePath)) {
+                console.error(`❌ Error: File does not exist: ${filePath}`);
+                return false;
+              }
+              
+              const content = fs.readFileSync(filePath, 'utf8');
+              const textToCheck = extractTextFromMarkdown(content);
+              
+              // Skip empty files or files with very little text content
+              if (textToCheck.trim().length < 50) {
+                console.log(`⚠️ Skipping ${filePath}: Not enough text content to check`);
+                return true;
+              }
+              
+              console.log(`Sending content to grammar check API...`);
+              
+              const issues = await checkGrammar(textToCheck);
+              
+              if (issues.length === 0) {
+                console.log(`✅ ${filePath}: No grammar issues found`);
+                return true;
+              } else {
+                console.log(`⚠️ ${filePath}: Found ${issues.length} grammar issues:`);
+                issues.forEach((issue, index) => {
+                  console.log(`  ${index + 1}. ${issue.issue_type}: "${issue.text_with_issue}"`);
+                  console.log(`     Explanation: ${issue.explanation}`);
+                  console.log(`     Suggestion: ${issue.suggestion}`);
+                  console.log();
+                });
+                return false;
+              }
+            } catch (error) {
+              console.error(`❌ Error processing ${filePath}:`, error.message);
+              return false;
+            }
+          };
+
+          // Main function
+          const main = async () => {
+            try {
+              // Get file from command line
+              const file = process.argv[2];
+              
+              if (!file) {
+                console.error('Please provide a file path as an argument');
+                process.exit(1);
+              }
+              
+              console.log(`Checking grammar in file: ${file}`);
+              
+              const result = await processFile(file);
+              
+              if (result) {
+                console.log('\n✅ Grammar check passed');
+                process.exit(0);
+              } else {
+                console.error('\n❌ Grammar check failed: Issues were found');
+                process.exit(1);
+              }
+            } catch (error) {
+              console.error('❌ Error:', error.message);
+              process.exit(1);
+            }
+          };
+
+          // Run the main function
+          main();
+          EOF
+          
+          chmod +x grammar-checker.js
+          
+      - name: Create format validator script
         run: |
           cat > validate-markdown.js << 'EOF'
           #!/usr/bin/env node
@@ -262,7 +440,7 @@ jobs:
           const checkGrammar = async (text) => {
             try {
               const response = await axios.post(API_ENDPOINT, {
-                model: 'claude-3.5-sonnet',
+                model: 'claude-3-sonnet-20240229',
                 prompt: `Please review the following text for grammatical errors, typos, incorrect sentence structures, passive voice, and unnecessary jargon. For each issue, identify the specific problem, explain why it's an issue, and suggest a correction. Format your response as a JSON array with objects containing: "issue_type", "text_with_issue", "explanation", and "suggestion".
 
           Text to review:
