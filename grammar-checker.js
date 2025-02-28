@@ -1,11 +1,15 @@
 // Get all markdown files from the repository
-const getAllMarkdownFiles = (dir, fileList = []) => {
+const getAllMarkdownFiles = (dir, fileList = [], excludeDirs = ['node_modules', '.git']) => {
     const files = fs.readdirSync(dir);
     
     files.forEach(file => {
       const filePath = path.join(dir, file);
+      
+      // Skip excluded directories
       if (fs.statSync(filePath).isDirectory()) {
-        getAllMarkdownFiles(filePath, fileList);
+        if (!excludeDirs.includes(file)) {
+          getAllMarkdownFiles(filePath, fileList, excludeDirs);
+        }
       } else if (file.endsWith('.md')) {
         fileList.push(filePath);
       }
