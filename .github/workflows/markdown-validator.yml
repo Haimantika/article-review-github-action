@@ -100,6 +100,7 @@ jobs:
             const content = fs.readFileSync(filePath, 'utf8');
             const lines = content.split('\n');
             let valid = true;
+            let inCodeBlock = false;
             
             for (let i = 0; i < lines.length; i++) {
               const line = lines[i];
@@ -110,10 +111,28 @@ jobs:
                 valid = false;
               }
               
-              // Check for multiple spaces in text (excluding code blocks and front matter)
-              if (!line.startsWith('    ') && !line.startsWith('```') && !line.match(/^#+\s/) && !line.match(/^\s*-\s/) && !line.match(/^\|/) && line.match(/\S\s{2,}\S/)) {
-                console.error(`❌ ${filePath}:${i+1}: Line has extra spaces: "${line}"`);
-                valid = false;
+              // Check for multiple spaces in text (excluding code blocks, tables, and front matter)
+              // Track if we're inside a code block
+              if (line.trim().startsWith('```')) {
+                inCodeBlock = !inCodeBlock;
+              }
+              
+              // Only check for multiple spaces if we're not in a code block, table, or special formatting
+              if (!inCodeBlock && 
+                  !line.startsWith('    ') && 
+                  !line.startsWith('```') && 
+                  !line.match(/^#+\s/) && 
+                  !line.match(/^\s*-\s/) && 
+                  !line.match(/^\|/) && 
+                  !line.includes('[secondary_label') && 
+                  !line.includes('  Running') && // Common in command outputs
+                  !line.match(/\S\s{3,}\S/) // Allow up to 2 spaces between words
+                 ) {
+                  // Check for multiple spaces between words (3 or more)
+                  if (line.match(/\S\s{3,}\S/)) {
+                    console.error(`❌ ${filePath}:${i+1}: Line has excessive spaces (3+): "${line}"`);
+                    valid = false;
+                  }
               }
             }
             

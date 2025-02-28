@@ -76,6 +76,7 @@ const validateWhitespace = (filePath) => {
   const content = fs.readFileSync(filePath, 'utf8');
   const lines = content.split('\n');
   let valid = true;
+  let inCodeBlock = false;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
