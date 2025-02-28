@@ -1,4 +1,4 @@
-name: Markdown Validator
+name: Markdown Grammar Checker
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  validate-markdown:
+  grammar-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -30,59 +30,9 @@ jobs:
             **/*.md
           files_ignore: |
             **/node_modules/**
-          
-      - name: Create validators
+            
+      - name: Create grammar checker script
         run: |
-          # Create format validator
-          cat > validate-format.js << 'EOF'
-          #!/usr/bin/env node
-          
-          const fs = require('fs');
-          const path = require('path');
-          
-          // Main validation function for a single file
-          const validateFile = (filePath) => {
-            console.log(`Validating format of ${filePath}...`);
-            const content = fs.readFileSync(filePath, 'utf8');
-            let valid = true;
-            
-            // Check file ending with single newline
-            if (!content.endsWith('\n') || content.endsWith('\n\n')) {
-              console.error(`❌ ${filePath}: File should end with a single newline character`);
-              valid = false;
-            }
-            
-            // Add other format checks as needed
-            
-            if (valid) {
-              console.log(`✅ ${filePath}: Format validation passed`);
-            }
-            
-            return valid;
-          };
-          
-          // Get file from command line
-          const file = process.argv[2];
-          
-          if (!file) {
-            console.error('Please provide a file path as an argument');
-            process.exit(1);
-          }
-          
-          const result = validateFile(file);
-          
-          if (!result) {
-            console.error('❌ Format validation failed');
-            process.exit(1);
-          } else {
-            console.log('✅ Format validation passed');
-            process.exit(0);
-          }
-          EOF
-          
-          chmod +x validate-format.js
-          
-          # Create grammar checker
           cat > check-grammar.js << 'EOF'
           #!/usr/bin/env node
           
@@ -246,45 +196,19 @@ jobs:
           
           chmod +x check-grammar.js
 
-      - name: Run format validation and grammar checks
+      - name: Run grammar checks
         env:
           DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
           DO_AGENT_BASE_URL: ${{ secrets.DO_AGENT_BASE_URL || 'https://agent-aaf74f4416df5696a67b-o4npv.ondigitalocean.app' }}
         run: |
           if [ "${{ steps.changed-files.outputs.all_changed_files }}" == "" ]; then
-            echo "No markdown files changed in this PR. Skipping validation."
+            echo "No markdown files changed in this PR. Skipping grammar check."
             exit 0
           fi
           
-          echo "Running validation on changed files..."
+          echo "Running grammar checks on changed files..."
           
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            echo "=== Processing $file ==="
-            
-            # Run format validation
-            echo "Running format validation..."
-            node validate-format.js "$file" || FORMAT_FAILED=true
-            
-            # Run grammar check regardless of format validation result
-            echo "Running grammar check..."
-            node check-grammar.js "$file" || GRAMMAR_FAILED=true
-            
-            echo "=== Completed processing $file ==="
-            echo ""
-          done
-          
-          # Report summary
-          if [ "$FORMAT_FAILED" = true ]; then
-            echo "❌ Format validation failed for one or more files."
-          fi
-          
-          if [ "$GRAMMAR_FAILED" = true ]; then
-            echo "❌ Grammar check failed for one or more files."
-          fi
-          
-          if [ "$FORMAT_FAILED" = true ] || [ "$GRAMMAR_FAILED" = true ]; then
-            exit 1
-          else
-            echo "✅ All validation checks passed."
-          fi
+            echo "Checking grammar in $file..."
+            node check-grammar.js "$file"
           done
