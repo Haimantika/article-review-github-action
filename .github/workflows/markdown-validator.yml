@@ -40,14 +40,20 @@ jobs:
           const axios = require('axios');
           
           // DigitalOcean AI Agent endpoint and key
-          const AGENT_BASE_URL = process.env.DO_AGENT_BASE_URL || 'https://agent-aaf74f4416df5696a67b-o4npv.ondigitalocean.app';
+          const AGENT_BASE_URL = process.env.DO_AGENT_BASE_URL;
           const AGENT_ENDPOINT = `${AGENT_BASE_URL}/api/v1/chat/completions`;
           const API_TOKEN = process.env.DO_API_TOKEN;
           
-          console.log("Using API endpoint:", AGENT_ENDPOINT);
+          // Log information without revealing the full endpoint
+          console.log("Grammar checking service initialized");
           
           if (!API_TOKEN) {
-            console.error('❌ Error: DigitalOcean API token not found. Please set the DO_API_TOKEN environment variable.');
+            console.error('❌ Error: API token not found. Please check environment variables.');
+            process.exit(1);
+          }
+          
+          if (!AGENT_BASE_URL) {
+            console.error('❌ Error: Agent base URL not found. Please check environment variables.');
             process.exit(1);
           }
           
@@ -74,7 +80,7 @@ jobs:
           // Function to check grammar using DigitalOcean's AI Agent
           const checkGrammar = async (text) => {
             try {
-              console.log("Sending request to DigitalOcean AI agent...");
+              console.log("Starting grammar analysis...");
               
               const payloadData = {
                 model: "claude-3.5-sonnet",
@@ -99,7 +105,7 @@ jobs:
                 }
               });
               
-              console.log("Received response from AI agent");
+              console.log("Analysis complete");
               
               // Parse the AI response to get the JSON data
               const aiResponse = response.data.choices[0].message.content;
@@ -109,14 +115,14 @@ jobs:
                 const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
                 return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
               } catch (e) {
-                console.error('❌ Error parsing AI response:', e);
+                console.error('❌ Error parsing AI response');
                 return [];
               }
             } catch (error) {
               console.error('❌ Error checking grammar:', error.message);
               if (error.response) {
                 console.error('Response status:', error.response.status);
-                console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+                console.error('Error: Grammar service returned an error');
               }
               return [];
             }
@@ -142,7 +148,7 @@ jobs:
                 return true;
               }
               
-              console.log(`Sending content to grammar check API...`);
+              console.log(`Analyzing content...`);
               
               const issues = await checkGrammar(textToCheck);
               
@@ -199,7 +205,7 @@ jobs:
       - name: Run grammar checks
         env:
           DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
-          DO_AGENT_BASE_URL: ${{ secrets.DO_AGENT_BASE_URL || 'https://agent-aaf74f4416df5696a67b-o4npv.ondigitalocean.app' }}
+          DO_AGENT_BASE_URL: ${{ secrets.DO_AGENT_BASE_URL }}
         run: |
           if [ "${{ steps.changed-files.outputs.all_changed_files }}" == "" ]; then
             echo "No markdown files changed in this PR. Skipping grammar check."
