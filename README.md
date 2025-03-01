@@ -57,6 +57,10 @@ The action uses DigitalOcean's AI platform with Claude 3.5 Sonnet to perform sop
    - Unnecessary jargon
    - Header structure issues
    - Whitespace formatting problems
+  
+The result will be something like this:
+<img width="1328" alt="Screenshot 2025-03-02 at 12 18 45 AM" src="https://github.com/user-attachments/assets/8c4ceaef-24f2-499e-b2ca-dea752e89307" />
+ 
 
 ### Results
 
