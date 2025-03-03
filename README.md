@@ -19,6 +19,10 @@ First, add these secrets to your GitHub repository:
 2. Add these secrets:
    - `DO_API_TOKEN`: Your DigitalOcean API token with access to AI services
    - `DO_AGENT_BASE_URL`: URL for your DigitalOcean AI agent (e.g., `https://your-agent-id.ondigitalocean.app`)
+  
+_Learn how to build an agent from [here](https://www.digitalocean.com/community/tutorials/tutorial-generator-with-claude-sonnet-react)._
+
+_For this agent, use the prompt: You are an agent and your task is to correct grammatical issues, check for H tag placements and trailing spaces._
 
 ### 2. Usage
 
