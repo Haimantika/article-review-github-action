@@ -23,8 +23,19 @@ inputs:
     default: '**/node_modules/**'
 
 runs:
-  using: 'node16'
-  main: 'index.js'
+  using: "composite"
+  steps:
+    - run: npm ci
+      shell: bash
+      working-directory: ${{ github.action_path }}
+    - run: node ${{ github.action_path }}/index.js
+      shell: bash
+      env:
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_DO_API_TOKEN: ${{ inputs.do-api-token }}
+        INPUT_DO_AGENT_BASE_URL: ${{ inputs.do-agent-base-url }}
+        INPUT_FILE_PATTERN: ${{ inputs.file-pattern }}
+        INPUT_EXCLUDE_PATTERN: ${{ inputs.exclude-pattern }}
 
 branding:
   icon: 'edit-3'
