@@ -20,11 +20,34 @@ First, add these secrets to your GitHub repository:
    - `DO_API_TOKEN`: Your DigitalOcean API token with access to AI services
    - `DO_AGENT_BASE_URL`: URL for your DigitalOcean AI agent (e.g., `https://your-agent-id.ondigitalocean.app`)
 
-### 2. Create the Workflow File
+### 2. Usage
 
-Create a file at `.github/workflows/markdown-validator.yml` and paste the entire contents from of the `markdown-validator.yml` file
+Add this to your workflow file (e.g., `.github/workflows/grammar-check.yml`):
 
-Then, paste the entire contents of the `grammar-checker.js` file between the `cat > grammar-checker.js << 'EOF'` and `EOF` lines.
+```yaml
+name: Check Markdown Grammar
+
+on:
+  pull_request:
+    paths:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  check-markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check Markdown Grammar
+        uses: your-username/markdown-grammar-checker@v1
+        with:
+          do-api-token: ${{ secrets.DO_API_TOKEN }}
+          do-agent-base-url: ${{ secrets.DO_AGENT_BASE_URL }}
+          # Optional: customize which files to check
+          file-pattern: '**/*.md'
+          exclude-pattern: '**/node_modules/**,**/vendor/**'
+```
 
 ### 3. Test the Action
 

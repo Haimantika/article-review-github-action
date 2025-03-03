@@ -1,0 +1,31 @@
+name: 'Markdown Grammar Checker'
+description: 'Checks markdown files for grammar, style, and formatting issues using AI'
+author: 'Haimantika Mitra'
+
+inputs:
+  github-token:
+    description: 'GitHub token for accessing PR files'
+    required: true
+    default: ${{ github.token }}
+  do-api-token:
+    description: 'DigitalOcean API token'
+    required: true
+  do-agent-base-url:
+    description: 'DigitalOcean AI agent base URL'
+    required: true
+  file-pattern:
+    description: 'Glob pattern for files to check'
+    required: false
+    default: '**/*.md'
+  exclude-pattern:
+    description: 'Glob pattern for files to exclude'
+    required: false
+    default: '**/node_modules/**'
+
+runs:
+  using: 'node16'
+  main: 'index.js'
+
+branding:
+  icon: 'edit-3'
+  color: 'blue'

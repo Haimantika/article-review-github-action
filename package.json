@@ -1,5 +1,23 @@
 {
+  "name": "markdown-grammar-checker",
+  "version": "1.0.0",
+  "description": "GitHub Action to check markdown files for grammar and style issues",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "github-action",
+    "markdown",
+    "grammar",
+    "style"
+  ],
+  "author": "DigitalOcean Community",
+  "license": "MIT",
   "dependencies": {
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^5.1.1",
+    "@actions/glob": "^1.0.0",
     "axios": "^1.8.1",
     "yaml-front-matter": "^4.1.1"
   }
