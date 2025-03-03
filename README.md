@@ -40,7 +40,7 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Check Markdown Grammar
-        uses: your-username/markdown-grammar-checker@v1
+        uses: Haimantika/article-review-github-action@v1.0.5
         with:
           do-api-token: ${{ secrets.DO_API_TOKEN }}
           do-agent-base-url: ${{ secrets.DO_AGENT_BASE_URL }}
