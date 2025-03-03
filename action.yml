@@ -28,15 +28,16 @@ runs:
     - run: npm install --no-package-lock
       shell: bash
       working-directory: ${{ github.action_path }}
-    - run: node ${{ github.action_path }}/index.js
+    - run: |
+        echo "Debugging environment variables:"
+        echo "DO_API_TOKEN set: ${{ inputs.do-api-token != '' }}"
+        echo "DO_AGENT_BASE_URL set: ${{ inputs.do-agent-base-url != '' }}"
+        echo "Running main script..."
+        node ${{ github.action_path }}/index.js
       shell: bash
       env:
-        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
-        INPUT_DO_API_TOKEN: ${{ inputs.do-api-token }}
-        INPUT_DO_AGENT_BASE_URL: ${{ inputs.do-agent-base-url }}
-        INPUT_FILE_PATTERN: ${{ inputs.file-pattern }}
-        INPUT_EXCLUDE_PATTERN: ${{ inputs.exclude-pattern }}
-
-branding:
-  icon: 'edit-3'
-  color: 'blue'
+        DO_API_TOKEN: ${{ inputs.do-api-token }}
+        DO_AGENT_BASE_URL: ${{ inputs.do-agent-base-url }}
+        FILE_PATTERN: ${{ inputs.file-pattern }}
+        EXCLUDE_PATTERN: ${{ inputs.exclude-pattern }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}

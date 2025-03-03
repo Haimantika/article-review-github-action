@@ -6,11 +6,31 @@ const axios = require('axios');
 
 async function run() {
   try {
-    // Get inputs
-    const filePattern = core.getInput('file-pattern');
-    const excludePattern = core.getInput('exclude-pattern');
-    const doApiToken = core.getInput('do-api-token');
-    const doAgentBaseUrl = core.getInput('do-agent-base-url');
+    // Add debugging to see what environment variables exist
+    console.log('Available environment variables related to inputs:');
+    Object.keys(process.env)
+      .filter(key => key.startsWith('INPUT_'))
+      .forEach(key => console.log(`${key}: set = ${!!process.env[key]}`));
+    
+    // Get inputs - use both methods for maximum compatibility
+    // First try using core.getInput
+    let doApiToken = core.getInput('do-api-token');
+    let doAgentBaseUrl = core.getInput('do-agent-base-url');
+    let filePattern = core.getInput('file-pattern');
+    let excludePattern = core.getInput('exclude-pattern');
+    
+    // Fall back to environment variables if needed
+    if (!doApiToken) doApiToken = process.env.DO_API_TOKEN || process.env.INPUT_DO_API_TOKEN;
+    if (!doAgentBaseUrl) doAgentBaseUrl = process.env.DO_AGENT_BASE_URL || process.env.INPUT_DO_AGENT_BASE_URL;
+    if (!filePattern) filePattern = process.env.FILE_PATTERN || process.env.INPUT_FILE_PATTERN || '**/*.md';
+    if (!excludePattern) excludePattern = process.env.EXCLUDE_PATTERN || process.env.INPUT_EXCLUDE_PATTERN || '**/node_modules/**';
+    
+    // Log what we found
+    console.log('Using values:');
+    console.log(`- doApiToken: ${doApiToken ? 'set (hidden)' : 'NOT SET'}`);
+    console.log(`- doAgentBaseUrl: ${doAgentBaseUrl ? 'set (hidden)' : 'NOT SET'}`);
+    console.log(`- filePattern: ${filePattern}`);
+    console.log(`- excludePattern: ${excludePattern}`);
     
     if (!doApiToken) {
       core.setFailed('DigitalOcean API token not provided');
