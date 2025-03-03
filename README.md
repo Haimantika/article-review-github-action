@@ -98,3 +98,7 @@ For each detected issue, the action reports:
 - DigitalOcean AI API access
 - Node.js 18+
 - Access to GitHub Actions
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/Haimantika/article-review-github-action/blob/main/LICENSE) file for details.
