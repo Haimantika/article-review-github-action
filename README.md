@@ -55,7 +55,7 @@ jobs:
       
       - name: Check Markdown Grammar
         if: steps.changed-files.outputs.all_changed_files != ''
-        uses: Haimantika/article-review-github-action@v1.0.5
+        uses: Haimantika/article-review-github-action@v1.1.0
         with:
           do-api-token: ${{ secrets.DO_API_TOKEN }}
           do-agent-base-url: ${{ secrets.DO_AGENT_BASE_URL }}
