@@ -33,6 +33,7 @@ name: Check Markdown Grammar
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - '**.md'
   workflow_dispatch:
@@ -42,14 +43,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            **/*.md
+          files_ignore: |
+            **/node_modules/**
       
       - name: Check Markdown Grammar
+        if: steps.changed-files.outputs.all_changed_files != ''
         uses: Haimantika/article-review-github-action@v1.0.5
         with:
           do-api-token: ${{ secrets.DO_API_TOKEN }}
           do-agent-base-url: ${{ secrets.DO_AGENT_BASE_URL }}
-          # Optional: customize which files to check
-          file-pattern: '**/*.md'
+          file-pattern: ${{ steps.changed-files.outputs.all_changed_files }}
           exclude-pattern: '**/node_modules/**,**/vendor/**'
 ```
 
