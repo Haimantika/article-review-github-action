@@ -66,7 +66,7 @@ const checkGrammar = async (text) => {
     console.log("Sending request to DigitalOcean AI agent...");
     
     const response = await axios.post(AGENT_ENDPOINT, {
-      model: "claude-3-sonnet-20240229",
+      model: "claude-3.5-sonnet",
       messages: [
         {
           role: "system",
