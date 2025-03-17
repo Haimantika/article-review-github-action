@@ -5,7 +5,7 @@ const path = require('path');
 const axios = require('axios');
 
 // DigitalOcean AI Agent endpoint and key
-const AGENT_BASE_URL = process.env.DO_AGENT_BASE_URL || 'https://agent-aaf74f4416df5696a67b-o4npv.ondigitalocean.app';  // Update this to your actual base URL
+const AGENT_BASE_URL = process.env.DO_AGENT_BASE_URL;
 const AGENT_ENDPOINT = `${AGENT_BASE_URL}/api/v1/chat/completions`;
 const API_TOKEN = process.env.DO_API_TOKEN;
 
