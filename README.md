@@ -43,23 +43,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
+        with:
+          fetch-depth: 0  
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v46
+        uses: dorny/paths-filter@v2
         with:
-          files: |
-            **/*.md
-          files_ignore: |
-            **/node_modules/**
+          filters: |
+            markdown:
+              - '**/*.md'
+              - '!**/node_modules/**'
       
       - name: Check Markdown Grammar
-        if: steps.changed-files.outputs.all_changed_files != ''
+        if: steps.changed-files.outputs.markdown == 'true'
         uses: Haimantika/article-review-github-action@v1.1.1
         with:
           do-api-token: ${{ secrets.DO_API_TOKEN }}
           do-agent-base-url: ${{ secrets.DO_AGENT_BASE_URL }}
-          file-pattern: ${{ steps.changed-files.outputs.all_changed_files }}
+          file-pattern: ${{ steps.changed-files.outputs.files_markdown }}
           exclude-pattern: '**/node_modules/**,**/vendor/**'
 ```
 
