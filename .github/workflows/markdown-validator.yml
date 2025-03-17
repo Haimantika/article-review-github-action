@@ -14,7 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  
+          fetch-depth: 2  
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -26,28 +26,34 @@ jobs:
           
       - name: Get changed files
         id: changed-files
-        uses: dorny/paths-filter@v2
+        uses: actions/github-script@v7
         with:
-          base: ${{ github.event.pull_request.base.sha }}
-          ref: ${{ github.event.pull_request.head.sha }}
-          filters: |
-            markdown:
-              - '**.md'
-              - '!**/node_modules/**'
+          script: |
+            const github = require('@actions/github');
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: github.context.repo.owner,
+              repo: github.context.repo.repo,
+              pull_number: github.context.payload.pull_request.number,
+            });
+
+            const markdownFiles = files
+              .map(file => file.filename)
+              .filter(name => name.endsWith('.md') && !name.includes('node_modules'));
+
+            core.setOutput("markdown_files", markdownFiles.join(' '));
 
       - name: Run grammar checks
-        if: steps.changed-files.outputs.markdown == 'true'
+        if: steps.changed-files.outputs.markdown_files != ''
         env:
           DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
           DO_AGENT_BASE_URL: ${{ secrets.DO_AGENT_BASE_URL }}
         run: |
           echo "Running grammar checks on changed files..."
           
-          # Get the list of changed files
           files="${{ steps.changed-files.outputs.markdown_files }}"
-
-          # Ensure files are processed correctly
+          
           for file in $files; do
             echo "Checking grammar in $file..."
             node grammar-checker.js "$file"
           done
+

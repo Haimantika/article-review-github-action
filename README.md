@@ -44,24 +44,35 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0  
-      - name: Get changed files
+          fetch-depth: 2  # Ensures we can get the diff of the latest commit
+
+      - name: Get changed Markdown files
         id: changed-files
-        uses: dorny/paths-filter@v2
+        uses: actions/github-script@v7
         with:
-          filters: |
-            markdown:
-              - '**/*.md'
-              - '!**/node_modules/**'
-      
+          script: |
+            const github = require('@actions/github');
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: github.context.repo.owner,
+              repo: github.context.repo.repo,
+              pull_number: github.context.payload.pull_request.number,
+            });
+
+            const markdownFiles = files
+              .map(file => file.filename)
+              .filter(name => name.endsWith('.md') && !name.includes('node_modules'));
+
+            core.setOutput("markdown_files", markdownFiles.join('\n'));
+
       - name: Check Markdown Grammar
-        if: steps.changed-files.outputs.markdown == 'true'
+        if: steps.changed-files.outputs.markdown_files != ''
         uses: Haimantika/article-review-github-action@v1.1.1
         with:
           do-api-token: ${{ secrets.DO_API_TOKEN }}
           do-agent-base-url: ${{ secrets.DO_AGENT_BASE_URL }}
-          file-pattern: ${{ steps.changed-files.outputs.files_markdown }}
+          file-pattern: ${{ steps.changed-files.outputs.markdown_files }}
           exclude-pattern: '**/node_modules/**,**/vendor/**'
+
 ```
 
 ### 3. Test the Action
