@@ -43,11 +43,13 @@ jobs:
         run: |
           echo "Running grammar checks on changed files..."
           
-          # Split the files by newlines
-          IFS=$'\n'
-          files=($(echo "${{ steps.changed-files.outputs.files_markdown }}"))
+          # Get the list of changed files
+          files="${{ steps.changed-files.outputs.files_markdown }}"
           
-          for file in "${files[@]}"; do
-            echo "Checking grammar in $file..."
-            node grammar-checker.js "$file"
+          # Split files by newlines and process each file
+          echo "$files" | while read -r file; do
+            if [ -n "$file" ]; then
+              echo "Checking grammar in $file..."
+              node grammar-checker.js "$file"
+            fi
           done
