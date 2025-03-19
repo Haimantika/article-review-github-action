@@ -13,8 +13,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -26,30 +24,26 @@ jobs:
           
       - name: Get changed files
         id: changed-files
-        uses: dorny/paths-filter@v2
+        uses: tj-actions/changed-files@v46
         with:
-          base: ${{ github.event.pull_request.base.sha }}
-          ref: ${{ github.event.pull_request.head.sha }}
-          filters: |
-            markdown:
-              - '**.md'
-              - '!**/node_modules/**'
+          files: |
+            **/*.md
+          files_ignore: |
+            **/node_modules/**
 
       - name: Run grammar checks
-        if: steps.changed-files.outputs.markdown == 'true'
         env:
           DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
           DO_AGENT_BASE_URL: ${{ secrets.DO_AGENT_BASE_URL }}
         run: |
+          if [ "${{ steps.changed-files.outputs.all_changed_files }}" == "" ]; then
+            echo "No markdown files changed in this PR. Skipping grammar check."
+            exit 0
+          fi
+          
           echo "Running grammar checks on changed files..."
           
-          # Get the list of changed files
-          files="${{ steps.changed-files.outputs.files_markdown }}"
-          
-          # Split files by newlines and process each file
-          echo "$files" | while read -r file; do
-            if [ -n "$file" ]; then
-              echo "Checking grammar in $file..."
-              node grammar-checker.js "$file"
-            fi
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "Checking grammar in $file..."
+            node grammar-checker.js "$file"
           done
